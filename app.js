@@ -254,9 +254,14 @@
     navigator.geolocation.getCurrentPosition(function (pos) {
       var lat = pos.coords.latitude.toFixed(4), lon = pos.coords.longitude.toFixed(4);
       msg.textContent = 'Finding your state…';
-      fetchJSON('https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=' + lat + '&longitude=' + lon + '&localityLanguage=en')
+      var q = '/data/reverse-geocode-client?latitude=' + lat + '&longitude=' + lon + '&localityLanguage=en';
+      fetchJSON('https://api-bdc.io' + q)
         .then(codeFromBDC)
         .catch(function () { return null; })
+        .then(function (code) {
+          if (code) return code;
+          return fetchJSON('https://api.bigdatacloud.net' + q).then(codeFromBDC).catch(function () { return null; });
+        })
         .then(function (code) {
           if (code) return code;
           return fetchJSON('https://nominatim.openstreetmap.org/reverse?format=jsonv2&zoom=5&lat=' + lat + '&lon=' + lon).then(codeFromNominatim).catch(function () { return null; });
