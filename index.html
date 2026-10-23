@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#05060a">
+<meta name="description" content="Kilowatt — a private, offline-friendly cost tracker for your lights.">
+<title>Kilowatt</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><circle cx='32' cy='32' r='30' fill='%2305060a' stroke='%23f5c96a' stroke-width='2'/><path d='M36 8 18 36h12l-4 20 20-30H34z' fill='%23f5c96a'/></svg>">
+<link rel="stylesheet" href="style.css?v=kw1">
+</head>
+<body>
+<div class="sky" aria-hidden="true"><div class="sun"></div><div class="horizon"></div><div class="stars"></div></div>
+
+<main class="wrap">
+  <header class="top">
+    <div class="brand">
+      <svg class="bolt" viewBox="0 0 24 24" aria-hidden="true"><path d="M13.5 2 4 14h6.5L9 22l11-13h-6.8z"/></svg>
+      <h1>Kilowatt</h1>
+    </div>
+    <span class="ver" id="ver">kw1</span>
+  </header>
+
+  <!-- Live meter -->
+  <section class="panel meter" aria-label="Live cost meter">
+    <div class="label">Burning now</div>
+    <div class="big glow" id="perHour">$0.0000</div>
+    <div class="sub"><span id="onCount">0 lights on</span> · <span id="onWatts">0 W</span> · per hour</div>
+    <div class="rule"></div>
+    <div class="row2">
+      <div>
+        <div class="label">Running since on</div>
+        <div class="mid glow" id="running">$0.000000</div>
+      </div>
+      <div>
+        <div class="label">Rate</div>
+        <div class="mid glow-soft" id="rateShow">—</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Savings -->
+  <section class="panel savings" aria-label="Savings">
+    <div class="label">This year you've saved</div>
+    <div class="big glow gold" id="saved">$0.00</div>
+    <div class="sub" id="savedSub">Every time you switch a light off, its projected yearly cost is added here.</div>
+    <details class="log">
+      <summary>Savings log&nbsp;<span id="logCount"></span></summary>
+      <ul id="logList"></ul>
+      <button class="btn ghost danger" id="resetSaved" type="button">Reset savings</button>
+    </details>
+  </section>
+
+  <!-- Projection -->
+  <section class="panel" aria-label="Projected cost">
+    <div class="label">Projected cost · all lights at their hours/day</div>
+    <div class="grid4">
+      <div><span class="k">Today</span><span class="v glow-soft" id="pDay">$0.00</span></div>
+      <div><span class="k">Week</span><span class="v glow-soft" id="pWeek">$0.00</span></div>
+      <div><span class="k">Month</span><span class="v glow-soft" id="pMonth">$0.00</span></div>
+      <div><span class="k">Year</span><span class="v glow-soft" id="pYear">$0.00</span></div>
+    </div>
+    <div class="sub" id="kwhLine"></div>
+  </section>
+
+  <!-- Lights -->
+  <section aria-label="Lights">
+    <div class="sectionhead">
+      <h2>Lights</h2>
+      <button class="btn primary" id="addLight" type="button">+ Add light</button>
+    </div>
+    <div id="lights"></div>
+  </section>
+
+  <!-- Location / rate -->
+  <section class="panel" aria-label="Electricity rate">
+    <h2>Your electricity rate</h2>
+    <label class="field">
+      <span>State</span>
+      <select id="stateSel"></select>
+    </label>
+    <button class="btn wide" id="geoBtn" type="button">◎ Use my location</button>
+    <div class="sub" id="geoMsg" role="status"></div>
+    <label class="field">
+      <span>Your bill rate (¢/kWh) — optional override</span>
+      <input id="rateOverride" type="number" inputmode="decimal" min="0" step="0.01" placeholder="e.g. 13.9">
+    </label>
+    <div class="sub">Tip: divide your bill's energy charges by kWh used for your real rate. Leave blank to use the state average.</div>
+    <div class="sub src">State averages: <a id="srcLink" href="#" target="_blank" rel="noopener"></a>.</div>
+  </section>
+
+  <footer class="foot">
+    <p>Kilowatt <span id="ver2">kw1</span> · No accounts, no tracking. Everything stays in this browser (localStorage).</p>
+    <p>Cost = watts ÷ 1000 × hours × rate. Voltage × amps gives watts if you know the current draw.</p>
+  </footer>
+</main>
+
+<template id="lightTpl">
+  <article class="panel light">
+    <div class="lhead">
+      <input class="name" data-f="name" aria-label="Light name" maxlength="40">
+      <button class="toggle" type="button" role="switch" aria-checked="false" aria-label="On/off"><span class="knob"></span></button>
+    </div>
+    <div class="lstats">
+      <span class="lnow glow-soft">$0.0000/hr</span>
+      <span class="lyear">$0.00/yr</span>
+    </div>
+    <div class="types" role="radiogroup" aria-label="Bulb type"></div>
+    <div class="fields">
+      <label class="field"><span>Watts</span><input data-f="watts" type="number" inputmode="decimal" min="0" step="0.1"></label>
+      <label class="field"><span>Hours on / day</span><input data-f="hours" type="number" inputmode="decimal" min="0" max="24" step="0.25"></label>
+      <label class="field"><span>Voltage (V)</span><input data-f="volts" type="number" inputmode="decimal" min="0" step="1"></label>
+      <label class="field"><span>Amps (optional)</span><input data-f="amps" type="number" inputmode="decimal" min="0" step="0.01" placeholder="V × A = W"></label>
+      <label class="field full"><span>Location / room</span><input data-f="location" maxlength="40" placeholder="Kitchen, porch, garage…"></label>
+    </div>
+    <button class="btn ghost danger small del" type="button">Remove light</button>
+  </article>
+</template>
+
+<script src="rates.js?v=kw1"></script>
+<script src="app.js?v=kw1"></script>
+</body>
+</html>
