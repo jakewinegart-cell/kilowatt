@@ -1,20 +1,17 @@
 (function () {
   'use strict';
-  var VERSION = 'kw1';
+  var VERSION = 'kw2';
   var KEY = 'kilowatt.v1';
   var RATES = window.KW_RATES || {};
   var SRC = window.KW_RATE_SOURCE || { label: 'EIA', url: 'https://www.eia.gov/electricity/monthly/' };
 
-  var TYPES = [
-    { id: 'led', label: 'LED', w: 9 },
-    { id: 'incandescent', label: 'Incandescent', w: 60 },
-    { id: 'cfl', label: 'CFL', w: 14 },
-    { id: 'halogen', label: 'Halogen', w: 43 },
-    { id: 'tube', label: 'Fluorescent tube', w: 32 },
-    { id: 'smart', label: 'Smart LED', w: 9 },
-    { id: 'custom', label: 'Other / custom', w: 10 }
+  var TYPES = (window.KW_BULBS && window.KW_BULBS.length) ? window.KW_BULBS : [
+    { id: 'led', label: 'LED', w: 9 }, { id: 'custom', label: 'Other / custom', w: 10 }
   ];
-  function typeById(id) { for (var i = 0; i < TYPES.length; i++) if (TYPES[i].id === id) return TYPES[i]; return TYPES[0]; }
+  // Older / alternate keys mapped onto current bulb ids (graceful migration).
+  var TYPE_ALIASES = { fluorescent: 'tube', 'fluorescent-tube': 'tube', t8: 'tube', other: 'custom', 'smart-led': 'smart', smartled: 'smart', br30: 'flood', candelabra: 'candle' };
+  function findType(id) { for (var i = 0; i < TYPES.length; i++) if (TYPES[i].id === id) return TYPES[i]; return null; }
+  function typeById(id) { return findType(id) || findType(TYPE_ALIASES[id]) || findType('custom') || TYPES[0]; }
 
   // ---------- state ----------
   function uid() { return Math.random().toString(36).slice(2, 9) + Date.now().toString(36).slice(-4); }
@@ -29,6 +26,10 @@
   if (!S || !Array.isArray(S.lights)) S = defaults();
   if (!S.saved) S.saved = { year: new Date().getFullYear(), total: 0, log: [] };
   if (!RATES[S.stateCode]) S.stateCode = 'MT';
+  S.lights.forEach(function (l) {
+    if (!findType(l.type)) l.type = typeById(String(l.type || '').toLowerCase()).id;
+    if (l.watts == null || l.watts === '') l.watts = typeById(l.type).w;
+  });
   S.version = VERSION;
 
   function save() { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) { /* storage full or blocked */ } }
@@ -98,21 +99,37 @@
     });
 
     var types = node.querySelector('.types');
+    var picker = node.querySelector('.picker');
+    if (l._new) { picker.open = true; delete l._new; }
+    function paintSelected() {
+      var t = typeById(l.type);
+      var th = node.querySelector('.thumb');
+      th.src = t.img || ''; th.alt = t.label + ' bulb';
+      node.querySelector('.ptype').textContent = t.label + ' · ' + watts(l) + '\u00a0W';
+    }
     TYPES.forEach(function (t) {
       var b = document.createElement('button');
-      b.type = 'button'; b.className = 'chip'; b.setAttribute('role', 'radio');
-      b.textContent = t.label + ' · ' + t.w + 'W';
+      b.type = 'button'; b.className = 'bulb'; b.setAttribute('role', 'radio');
       b.setAttribute('aria-checked', String(l.type === t.id));
+      b.setAttribute('aria-label', t.label + ', ' + t.w + ' watts' + (t.hint ? ', ' + t.hint : ''));
+      var im = document.createElement('img');
+      im.src = t.img || ''; im.alt = ''; im.loading = 'lazy'; im.decoding = 'async'; im.width = 120; im.height = 120;
+      var lb = document.createElement('span'); lb.className = 'bl'; lb.textContent = t.label;
+      var bw = document.createElement('span'); bw.className = 'bw'; bw.textContent = t.w + '\u00a0W';
+      var hn = document.createElement('span'); hn.className = 'bh'; hn.textContent = t.hint || t.sub || '';
+      b.appendChild(im); b.appendChild(lb); b.appendChild(bw); b.appendChild(hn);
       b.addEventListener('click', function () {
         l.type = t.id; l.watts = t.w; l.amps = '';
         node.querySelector('[data-f="watts"]').value = l.watts;
         node.querySelector('[data-f="amps"]').value = '';
-        types.querySelectorAll('.chip').forEach(function (c) { c.setAttribute('aria-checked', 'false'); });
+        types.querySelectorAll('.bulb').forEach(function (c) { c.setAttribute('aria-checked', 'false'); });
         b.setAttribute('aria-checked', 'true');
-        save(); updateNumbers();
+        save(); paintSelected(); updateNumbers();
       });
       types.appendChild(b);
     });
+    paintSelected();
+    node._paint = paintSelected;
 
     var tg = node.querySelector('.toggle');
     tg.setAttribute('aria-checked', String(!!l.on));
@@ -182,6 +199,7 @@
       if (node) {
         node.querySelector('.lnow').textContent = money(perHour(l), 4) + '/hr · ' + watts(l) + 'W';
         node.querySelector('.lyear').textContent = money(perYear(l)) + '/yr';
+        var pt = node.querySelector('.ptype'); if (pt) pt.textContent = typeById(l.type).label + ' · ' + watts(l) + '\u00a0W';
       }
     });
     var now = new Date();
@@ -282,13 +300,27 @@
   // ---------- buttons ----------
   $('addLight').addEventListener('click', function () {
     var l = newLight(S.lights.length + 1);
-    S.lights.push(l); save(); renderLights();
+    S.lights.push(l); save(); l._new = true; renderLights();
     var node = lightsEl.querySelector('[data-id="' + l.id + '"]');
     if (node && node.scrollIntoView) node.scrollIntoView({ behavior: 'smooth', block: 'center' });
   });
   $('resetSaved').addEventListener('click', function () {
     if (!confirm('Reset this year’s savings tally and log to $0?')) return;
     S.saved = { year: new Date().getFullYear(), total: 0, log: [] }; save(); renderLog();
+  });
+
+  var cl = $('creditList');
+  if (cl) TYPES.forEach(function (t) {
+    var c = t.credit; if (!c) return;
+    var li = document.createElement('li');
+    var a = document.createElement('a'); a.href = c.source; a.target = '_blank'; a.rel = 'noopener'; a.textContent = c.title;
+    var lic = document.createElement('a'); lic.href = c.licenseUrl; lic.target = '_blank'; lic.rel = 'noopener'; lic.textContent = c.license;
+    li.appendChild(document.createTextNode(t.label + ': '));
+    li.appendChild(a);
+    li.appendChild(document.createTextNode(' by ' + (c.author || 'unknown') + ', '));
+    li.appendChild(lic);
+    li.appendChild(document.createTextNode(', via Wikimedia Commons (resized)'));
+    cl.appendChild(li);
   });
 
   $('ver').textContent = VERSION; $('ver2').textContent = VERSION;

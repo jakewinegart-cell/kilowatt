@@ -7,7 +7,7 @@
 <meta name="description" content="Kilowatt — a private, offline-friendly cost tracker for your lights.">
 <title>Kilowatt</title>
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><circle cx='32' cy='32' r='30' fill='%2305060a' stroke='%23f5c96a' stroke-width='2'/><path d='M36 8 18 36h12l-4 20 20-30H34z' fill='%23f5c96a'/></svg>">
-<link rel="stylesheet" href="style.css?v=kw1">
+<link rel="stylesheet" href="style.css?v=kw2">
 </head>
 <body>
 <div class="sky" aria-hidden="true"><div class="sun"></div><div class="horizon"></div><div class="stars"></div></div>
@@ -18,7 +18,7 @@
       <svg class="bolt" viewBox="0 0 24 24" aria-hidden="true"><path d="M13.5 2 4 14h6.5L9 22l11-13h-6.8z"/></svg>
       <h1>Kilowatt</h1>
     </div>
-    <span class="ver" id="ver">kw1</span>
+    <span class="ver" id="ver">kw2</span>
   </header>
 
   <!-- Live meter -->
@@ -90,7 +90,12 @@
   </section>
 
   <footer class="foot">
-    <p>Kilowatt <span id="ver2">kw1</span> · No accounts, no tracking. Everything stays in this browser (localStorage).</p>
+    <p>Kilowatt <span id="ver2">kw2</span> · No accounts, no tracking. Everything stays in this browser (localStorage).</p>
+    <details class="credits">
+      <summary>Photo credits</summary>
+      <ul id="creditList"></ul>
+      <p>Photos are from Wikimedia Commons under the licenses linked above, resized and padded to small thumbnails. Inclusion does not imply endorsement by the photographers.</p>
+    </details>
     <p>Cost = watts ÷ 1000 × hours × rate. Voltage × amps gives watts if you know the current draw.</p>
   </footer>
 </main>
@@ -98,6 +103,7 @@
 <template id="lightTpl">
   <article class="panel light">
     <div class="lhead">
+      <img class="thumb" alt="" width="56" height="56">
       <input class="name" data-f="name" aria-label="Light name" maxlength="40">
       <button class="toggle" type="button" role="switch" aria-checked="false" aria-label="On/off"><span class="knob"></span></button>
     </div>
@@ -105,7 +111,11 @@
       <span class="lnow glow-soft">$0.0000/hr</span>
       <span class="lyear">$0.00/yr</span>
     </div>
-    <div class="types" role="radiogroup" aria-label="Bulb type"></div>
+    <details class="picker">
+      <summary><span class="plabel">Bulb</span> <span class="ptype"></span> <span class="pchange">Change</span></summary>
+      <p class="phelp">Tap the bulb that looks like yours. We'll fill in its typical watts — check the bulb's base or box and edit if it's different.</p>
+      <div class="types" role="radiogroup" aria-label="Bulb type"></div>
+    </details>
     <div class="fields">
       <label class="field"><span>Watts</span><input data-f="watts" type="number" inputmode="decimal" min="0" step="0.1"></label>
       <label class="field"><span>Hours on / day</span><input data-f="hours" type="number" inputmode="decimal" min="0" max="24" step="0.25"></label>
@@ -117,7 +127,8 @@
   </article>
 </template>
 
-<script src="rates.js?v=kw1"></script>
-<script src="app.js?v=kw1"></script>
+<script src="rates.js?v=kw2"></script>
+<script src="bulbs.js?v=kw2"></script>
+<script src="app.js?v=kw2"></script>
 </body>
 </html>
